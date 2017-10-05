@@ -334,6 +334,8 @@ namespace Sched_controller {
 		sync_ds_cap = Genode::env()->ram_session()->alloc(100*sizeof(int));
 		_rqs[0].init_w_shared_ds(sync_ds_cap);
 
+		rqs[1]=1;
+		rqs[2]=1;
 		_mon_manager.update_rqs(rq_ds_cap);
 
 		_mon_manager.update_info(mon_ds_cap);
@@ -374,6 +376,8 @@ namespace Sched_controller {
 		PINF("Update Rq_buffer for core %d!", core);
 		_rqs[core].init_w_shared_ds(sync_ds_cap_vector.at(core));
 		Mon_manager::Monitoring_object *threads = Genode::env()->rm_session()->attach(mon_ds_cap);
+		rqs[1]=1;
+		rqs[2]=1;
 		_mon_manager.update_rqs(rq_ds_cap);
 		_mon_manager.update_info(mon_ds_cap);
 
@@ -407,7 +411,8 @@ namespace Sched_controller {
 	}
 
 	void Sched_controller::the_cycle() {
-		rqs[1]=0;
+		rqs[1]=1;
+		rqs[2]=1;
 		_mon_manager.update_rqs(rq_ds_cap);
 		_rqs[0].init_w_shared_ds(sync_ds_cap);
 		_rqs[1].init_w_shared_ds(sync_ds_cap);
@@ -442,10 +447,10 @@ namespace Sched_controller {
 		}
 		//store number of tuples at first position of array
 		list[0]=counter-1;
-		list[1]=0;
+		list[1]=1;
 		sync.deploy(_ds, 0, 0);
 		Genode::env()->ram_session()->free(_ds);
-		//the_cycle();
+		the_cycle();
 	}
 
 }

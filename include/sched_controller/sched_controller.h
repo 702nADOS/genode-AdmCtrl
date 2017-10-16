@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/heap.h>
 #include "mon_manager/mon_manager_connection.h"
 #include "sync/sync_connection.h"
 #include "sched_controller/pcore.h"

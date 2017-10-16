@@ -363,7 +363,7 @@ namespace Sched_controller {
 
 		
 		//loop forever
-		the_cycle();
+		//the_cycle();
 	}
 
 	Sched_controller::~Sched_controller()

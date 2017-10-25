@@ -15,6 +15,12 @@
 #include <unordered_map>
 #include <base/printf.h>
 
+/* for optimize function */
+#include <util/xml_node.h>
+#include <util/xml_generator.h>
+#include <typeinfo>
+/* ******************************** */
+
 #include "sched_controller/sched_controller.h"
 #include "sched_controller/task_allocator.h"
 #include "sched_controller/monitor.h"
@@ -65,18 +71,37 @@ namespace Sched_controller {
 		if (core < _num_cores)
 		{
 			task_map.insert({task.name, task});
-			//Execute sufficient schedulability test
-			if (!fp_alg.fp_sufficient_test(&task, &_rqs[core]))
+			if(task.task_class == Rq_task::Task_class::hi)
 			{
-				//If sufficient test fails --> execute RTA (exact test)
-				if (!fp_alg.RTA(&task, &_rqs[core]))
+				//Execute sufficient schedulability test
+				if (!fp_alg.fp_sufficient_test(&task, &_rqs[core]))
 				{
-					return -1;
+					//If sufficient test fails --> execute RTA (exact test)
+					if (!fp_alg.RTA(&task, &_rqs[core]))
+					{
+						return -1;
+					}
 				}
+				PWRN("Sched_controller (enq): Task %s was rta analyzed", task.name);
+			}
+			else if (task.task_class == Rq_task::Task_class::lo)
+			{
+				// do task optimization for lo tasks
+				_optimizer->add_task((unsigned int) core, task);
+			}
+			else
+			{
+				PWRN("Sched_controller (enq): The task_class of task %s is neither hi nor lo. It is: %d", task.name, task.task_class);
 			}
 			int success = _rqs[core].enq(task);
+			
 			return success;
 		}
+		else
+		{
+			PWRN("Sched_controller (enq): At task %s, the core (%d) is larger or equal than the number of cores (%d)", task.name, core, _num_cores);
+		}
+		
 		return -1;
 	}
 
@@ -217,6 +242,26 @@ namespace Sched_controller {
 		return;
 	}
 
+
+
+
+
+
+	/**
+	* 
+	* Optimize edf task scheduling at overload
+	*
+	*/
+	Sched_opt* Sched_controller::get_optimizer()
+	{
+		return _optimizer;
+	}
+	
+	
+
+
+
+
 	/**
 	 *
 	 */
@@ -260,6 +305,26 @@ namespace Sched_controller {
 	 *         core/runqueu, the utilization might also be
 	 *         > 1.
 	 */
+	
+	/*
+	double Sched_controller::get_utilization(int core) {
+		idlelast0=_mon_manager.get_idle_time(0);
+		idlelast1=_mon_manager.get_idle_time(1);
+		idlelast2=_mon_manager.get_idle_time(2);
+		idlelast3=_mon_manager.get_idle_time(3);
+		Timer::Connection timer;
+		timer.msleep(100);
+		switch(core){
+			case 0:{double util0=1-(_mon_manager.get_idle_time(0).value-idlelast0.value)/100000;
+				idlelast0=_mon_manager.get_idle_time(0);
+				return util0;}
+			case 1:{double util1=1-(_mon_manager.get_idle_time(1).value-idlelast1.value)/100000;idlelast1=_mon_manager.get_idle_time(1);return util1;}
+			case 2:{double util2=1-(_mon_manager.get_idle_time(2).value-idlelast2.value)/100000;idlelast2=_mon_manager.get_idle_time(2);return util2;}
+			case 3:{double util3=1-(_mon_manager.get_idle_time(3).value-idlelast3.value)/100000;idlelast3=_mon_manager.get_idle_time(3);return util3;}
+			default:return -1;
+		}
+	}
+	*/
 	double Sched_controller::get_utilization(int core) {
 		idlelast0=_mon_manager.get_idle_time(0);
 		idlelast1=_mon_manager.get_idle_time(1);
@@ -333,6 +398,10 @@ namespace Sched_controller {
 
 		sync_ds_cap = Genode::env()->ram_session()->alloc(100*sizeof(int));
 		_rqs[0].init_w_shared_ds(sync_ds_cap);
+		
+		dead_ds_cap = Genode::env()->ram_session()->alloc(256*sizeof(long long unsigned));
+
+
 
 		rqs[1]=1;
 		rqs[2]=1;
@@ -361,7 +430,8 @@ namespace Sched_controller {
 			//PINF("Allocated rq_buffer %d to _pcore %d", i, i);
 		}
 
-		
+		_optimizer = new Sched_opt(_num_cores, &_mon_manager, threads, mon_ds_cap, dead_ds_cap);
+				
 		//loop forever
 		//the_cycle();
 	}
@@ -436,7 +506,6 @@ namespace Sched_controller {
 		Rq_task::Rq_task *dequeued_task;
 		while(1)
 		{
-			_rqs->deq(&dequeued_task);
 			//stop dequeueing, if there are no more tasks in the buffer
 			if(dequeued_task==nullptr) break;
 			//Store tuples of id and prio in list for core

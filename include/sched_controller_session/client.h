@@ -46,7 +46,26 @@ namespace Sched_controller {
 		{
 			return call<Rpc_update_rq_buffer>(core);
 		}
-
+		
+		// functions to control the optimization
+		void optimize (Genode::String<32> task_name)
+		{
+			call<Rpc_optimize>(task_name);
+		}
+		void set_opt_goal (Genode::Ram_dataspace_capability xml_ds_cap)
+		{
+			call<Rpc_set_opt_goal>(xml_ds_cap);
+		}
+		
+		int scheduling_allowed (Genode::String<32> task_name)
+		{
+			return call<Rpc_scheduling_allowed>(task_name);
+		}
+		
+		void last_job_started (Genode::String<32> task_name)
+		{
+			call<Rpc_last_job_started>(task_name);
+		}
 	};
 }
 

@@ -53,7 +53,27 @@ namespace Sched_controller {
 				return _ctr->update_rq_buffer(core);
 			}
 
+			// Optimizer functions
+			void optimize (Genode::String<32> task_name)
+			{
+				_ctr->get_optimizer()->start_optimizing(task_name.string());
+			}
 
+			void set_opt_goal (Genode::Ram_dataspace_capability xml_ds_cap)
+			{
+				_ctr->get_optimizer()->set_goal(xml_ds_cap);
+			}
+			
+			int scheduling_allowed(Genode::String<32> task_name)
+			{
+				return _ctr->get_optimizer()->scheduling_allowed(task_name.string());
+			}
+			void last_job_started(Genode::String<32> task_name)
+			{
+				_ctr->get_optimizer()->last_job_started(task_name.string());
+			}
+			
+			
 			/* Session_component constructor enhanced by Sched_controller object */
 			Session_component(Sched_controller *ctr)
 			: Genode::Rpc_object<Session>()

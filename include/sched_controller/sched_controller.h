@@ -26,6 +26,8 @@
 #include <base/signal.h>
 #include "sched_controller/sched_alg.h"
 
+#include "sched_controller/sched_opt.h"
+
 namespace Sched_controller
 {
 
@@ -49,6 +51,7 @@ namespace Sched_controller
 			std::vector<Genode::Dataspace_capability> sync_ds_cap_vector;
 			Genode::Dataspace_capability sync_ds_cap;
 			Genode::Dataspace_capability rq_ds_cap;
+			Genode::Dataspace_capability dead_ds_cap;
 			int* rqs;
 			int _num_rqs = 128;
 			int _num_pcores = 0;
@@ -64,7 +67,9 @@ namespace Sched_controller
 			Genode::Trace::Execution_time idlelast2;
 			Genode::Trace::Execution_time idlelast3;
 			std::unordered_map<std::string, Rq_task::Rq_task> task_map;
-
+			Sched_opt *_optimizer;
+			
+			
 			int _set_num_pcores();
 			int _init_rqs(int);
 			int _init_pcores();
@@ -72,6 +77,7 @@ namespace Sched_controller
 
 			int deq(int, Rq_task::Rq_task**);
 			void the_cycle();
+			
 
 			Sched_alg fp_alg;
 
@@ -89,11 +95,16 @@ namespace Sched_controller
 			int are_you_ready();
 			int get_num_cores();
 			int update_rq_buffer(int core);
+			
+			// functions for optimization control
+			Sched_opt* get_optimizer();
+			
 
 			Sched_controller();
 			~Sched_controller();
 
 	};
+	
 
 }
 

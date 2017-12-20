@@ -32,7 +32,7 @@ namespace Sched_controller {
 	void Sched_opt::set_goal(Genode::Ram_dataspace_capability xml_ds_cap)
 	{
 		// Definition of the optimization goal via xml file
-		Genode::Rm_session* rm = Genode::env()->rm_session();
+		Genode::Region_map* rm = Genode::env()->rm_session();
 		const char* xml = rm->attach(xml_ds_cap);
 		Genode::Xml_node root(xml);
 

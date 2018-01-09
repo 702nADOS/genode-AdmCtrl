@@ -140,11 +140,8 @@ namespace Sched_controller {
 			return;
 		}
 		bool monitor_queried = false;
-		int count = 0;
 		unsigned long current_time = 0;
 		unsigned long long real_deadline = it->second.arrival_time + it->second.deadline;
-		while (!monitor_queried)
-		{
 			current_time = timer.elapsed_ms();
 			
 			// if it's time to see what happend, ...
@@ -160,9 +157,7 @@ namespace Sched_controller {
 			//PDBG("Optimizer: - %d, deadline = %llu, arrival: %llu, deadl: %llu", count, real_deadline, it->second.arrival_time, it->second.deadline);
 			
 			// wait some time to query the next monitor data
-			timer.msleep(query_intervall);
-			++count;
-		}
+			//timer.msleep(query_intervall);
 		//PDBG("Optimizer (start_optimizing): Finish optimizing task %s.", task_name.c_str());
 		
 	}

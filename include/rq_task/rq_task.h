@@ -26,6 +26,7 @@ namespace Rq_task
 			unsigned long long deadline;
 			unsigned long long wcet;
 			unsigned long long inter_arrival;
+			char group[24];
 			int prio;
 			bool valid;
 			char name[24];

@@ -142,7 +142,7 @@ namespace Sched_controller {
 		bool monitor_queried = false;
 		unsigned long current_time = 0;
 		unsigned long long real_deadline = it->second.arrival_time + it->second.deadline;
-			current_time = timer.elapsed_ms();
+			current_time = timer.now_us();
 			
 			// if it's time to see what happend, ...
 			if (current_time >= real_deadline || (it->second.arrival_time == 0))
@@ -253,14 +253,15 @@ namespace Sched_controller {
 		for(int j=0; j<100; ++j)
 		{
 			// end of threads-array reached?
-			if(_threads[j].foc_id == 0)
-			{
-				break;
-			}
-			PINF("Optimizer (_query_monitor): thread %u: task %s, arrival %llu (curr: %llu), start %llu, c: %d", _threads[j].foc_id ,_threads[j].thread_name.string(), _threads[j].arrival_time, current_time, _threads[j].start_time, _threads[j].affinity.xpos());
+			//if(_threads[j].foc_id == 0)
+			//{
+			//	break;
+			//}
+			
 			// determine unknown (new) jobs of given task
 			if( !task_str.compare(_threads[j].thread_name.string()))
 			{
+				PINF("Optimizer (_query_monitor): thread %u: task %s, arrival %llu (curr: %llu), start %llu, c: %d", _threads[j].foc_id ,_threads[j].thread_name.string(), _threads[j].arrival_time, current_time, _threads[j].start_time, _threads[j].affinity.xpos());
 				// matching task found -> check if this thread is a new job
 				if(_threads[j].arrival_time >= _tasks.at(task_str).arrival_time)
 				{

@@ -142,8 +142,10 @@ namespace Sched_controller {
 		bool monitor_queried = false;
 		unsigned long current_time = 0;
 		unsigned long long real_deadline = it->second.arrival_time + it->second.deadline;
-			current_time = timer.now_us();
-			
+		current_time = timer.now_us();
+		int count = 0;
+		PDBG("Optimizer: - %d, act_time = %lu", count, current_time);
+		PDBG("Optimizer: - %d, deadline = %llu, arrival: %llu, deadl: %llu", count, real_deadline, it->second.arrival_time, it->second.deadline);	
 			// if it's time to see what happend, ...
 			if (current_time >= real_deadline || (it->second.arrival_time == 0))
 			{
@@ -153,8 +155,7 @@ namespace Sched_controller {
 				monitor_queried = true;
 			}
 			
-			//PDBG("Optimizer: - %d, act_time = %lu", count, current_time);
-			//PDBG("Optimizer: - %d, deadline = %llu, arrival: %llu, deadl: %llu", count, real_deadline, it->second.arrival_time, it->second.deadline);
+			
 			
 			// wait some time to query the next monitor data
 			//timer.msleep(query_intervall);
@@ -257,10 +258,12 @@ namespace Sched_controller {
 			//{
 			//	break;
 			//}
-			
+			//PINF("Optimizer (_query_monitor): foc_id %d tname %s",_threads[j].foc_id, _threads[j].thread_name.string());
 			// determine unknown (new) jobs of given task
-			if( !task_str.compare(_threads[j].thread_name.string()))
+			if( !task_str.compare(_threads[j].thread_name.string()) &&
+				(_threads[j].exit_time > 0))
 			{
+				PINF("Optimizer (_query_monitor): thread %u exit time %llu:",_threads[j].foc_id,_threads[j].exit_time);
 				PINF("Optimizer (_query_monitor): thread %u: task %s, arrival %llu (curr: %llu), start %llu, c: %d", _threads[j].foc_id ,_threads[j].thread_name.string(), _threads[j].arrival_time, current_time, _threads[j].start_time, _threads[j].affinity.xpos());
 				// matching task found -> check if this thread is a new job
 				if(_threads[j].arrival_time >= _tasks.at(task_str).arrival_time)
@@ -273,15 +276,15 @@ namespace Sched_controller {
 					
 				}
 			}
-			else
-			{
-				// store foc_id to the correct task
-				std::unordered_map<std::string, Optimization_task>::iterator it = _tasks.find(_threads[j].thread_name.string());
-				if(it != _tasks.end())
-				{
-					_set_newest_job(it->first, j);
-				}
-			}
+			// else
+			// {
+			// 	// store foc_id to the correct task
+			// 	std::unordered_map<std::string, Optimization_task>::iterator it = _tasks.find(_threads[j].thread_name.string());
+			// 	if(it != _tasks.end())
+			// 	{
+			// 		_set_newest_job(it->first, j);
+			// 	}
+			// }
 		}
 		
 		
@@ -311,7 +314,12 @@ namespace Sched_controller {
 				// there is only one new thread with _threads[j].arrival_time >= _tasks.at(task_str).arrival_time
 				job_executed = true;
 				
+				//  PINF("Optimizer (_query_monitor): Task current_time %llu deadline %llu", current_time,_threads[new_threads_nr[0]].arrival_time + _tasks.at(task_str).deadline);
+
 				bool deadline_time_reached = (current_time >= _threads[new_threads_nr[0]].arrival_time + _tasks.at(task_str).deadline);
+				
+				// set arrival_time for current/next iteration
+				_set_arrival_time(task_str, new_threads_nr[0], deadline_time_reached);
 				
 				if (deadline_time_reached) // the job has no time left to be executed
 				{
@@ -325,8 +333,7 @@ namespace Sched_controller {
 					_set_newest_job(task_str, new_threads_nr[0]);
 				}
 				
-				// set arrival_time for current/next iteration
-				_set_arrival_time(task_str, new_threads_nr[0], deadline_time_reached);
+
 				
 				break;
 			}
@@ -425,6 +432,8 @@ namespace Sched_controller {
 		}
 		unsigned int core = _tasks.at(task_str).core;
 		
+		PINF("Optimizer (_task_executed) exit_time %llu deadline %llu", _threads[thread_nr].exit_time,
+			_threads[thread_nr].arrival_time + _tasks.at(task_str).deadline);
 		
 		// determine if there was an soft-exit before reaching the deadline time
 		if((_threads[thread_nr].exit_time > 0) && (_threads[thread_nr].exit_time <= _threads[thread_nr].arrival_time + _tasks.at(task_str).deadline))
@@ -856,6 +865,7 @@ namespace Sched_controller {
 		{
 			_tasks.at(task_str).arrival_time += _tasks.at(task_str).inter_arrival;
 		}
+		PINF("Optimizer: (set_arrival_time) Task %s",task_str.c_str());
 	}
 	
 	void Sched_opt::_set_to_schedule(std::string task_str)
@@ -1009,20 +1019,21 @@ namespace Sched_controller {
 		long long unsigned job_foc_id = 0;
 		long long unsigned latest_rip_time = 0;
 		
-		
 		// loop through threads array to find a matching thread
 		for(unsigned int i=0; i<100; ++i)
 		{
 			// end of threads-array reached
-			if(_threads[i].foc_id == 0)
-			{
-				break;
-			}
+			// if(_threads[i].foc_id == 0)
+			// {
+			// 	break;
+			// }
 			
 			// find thread which exit-time is the most recent in the interval [thread_start, thread_deadline], so it is the causation thread
 			// matching task found -> check if exit_time is in considered time interval
+			PWRN("Optimizer(_get_cause_task): %llu %llu %llu",thread_start,thread_deadline,_threads[i].exit_time);
 			if((_threads[i].exit_time >= thread_start) && (_threads[i].exit_time <= thread_deadline))
 			{
+				PWRN("Optimizer(_get_cause_task yes): %llu %llu %llu",thread_start,thread_deadline,_threads[i].exit_time);
 				// this is a possible causation task. I need the most recent one
 				if((cause_thread_nr < 0) || (_threads[i].exit_time > _threads[cause_thread_nr].exit_time))
 				{

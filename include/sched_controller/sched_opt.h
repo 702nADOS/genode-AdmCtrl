@@ -44,6 +44,7 @@ namespace Sched_controller {
 	{
 		unsigned int		foc_id;
 		unsigned long long 	arrival_time;
+		unsigned long long 	exit_time;
 		unsigned int		core;
 		bool			dispatched;
 		
@@ -75,7 +76,7 @@ namespace Sched_controller {
 		
 		
 		// attributes for optimization
-		unsigned int*		value; // value is needed for every core
+		unsigned int		value[4]; // value is needed for every core
 		double			utilization;
 		
 		

@@ -81,15 +81,17 @@ namespace Sched_controller {
 	void Sched_opt::add_task(unsigned int core, Rq_task::Rq_task task)
 	{
 		
-		unsigned int values [num_cores];
+		//unsigned int values [num_cores];
 		// for all cores the value is initially 0
-		for (int i=0; i < num_cores; ++i)
-		{
-			values[i] = 0;
-		}
+
 		
 		// convert newly arriving task to optimization task
 		Optimization_task _task;
+
+		for (int i=0; i < num_cores; ++i)
+		{
+			_task.value[i] = 0;
+		}
 		
 		_task.name = std::string(task.name); // das geht erst, wenn Masterarebit von Steffan fertig ist
 		_task.inter_arrival = task.inter_arrival;
@@ -102,11 +104,12 @@ namespace Sched_controller {
 		
 		_task.newest_job.foc_id = 0;
 		_task.newest_job.arrival_time = 0;
+		_task.newest_job.exit_time = 0;
 		_task.newest_job.dispatched = true;
 		
 		// used to do utilization optimisation
 		_task.utilization = 1;
-		_task.value = values;
+		//_task.value = values;
 		
 		_tasks.insert({_task.name, _task});
 		//PDBG("Optimizer (add_task): Add task %s to task list (core: %u).", std::string(task.name).c_str(), core);
@@ -177,6 +180,11 @@ namespace Sched_controller {
 		std::unordered_map<std::string, Optimization_task>::iterator it = _tasks.find(task_name);
 		if(it != _tasks.end())
 		{
+			if(!(it->second.to_schedule))
+			{
+				PINF("Optimizer (_query_monitor): Task %s has not executed a job.", task_name.c_str());
+				_task_not_executed(task_name);
+			}
 			return it->second.to_schedule;
 		}
 		
@@ -209,7 +217,7 @@ namespace Sched_controller {
 		num_cores = sched_num_cores;
 		
 		// default optimization goal = no optimization is done
-		_opt_goal = NONE;
+		_opt_goal = FAIRNESS;
 		
 		// number of ms to sleep between two intervalls to query the monitor data
 		query_intervall = 100;
@@ -331,6 +339,7 @@ namespace Sched_controller {
 				{
 					PINF("Optimizer (_query_monitor): Task %s - job %u has time left (%llu).", task_str.c_str(), _threads[new_threads_nr[0]].foc_id, _threads[new_threads_nr[0]].arrival_time + _tasks.at(task_str).deadline);
 					_set_newest_job(task_str, new_threads_nr[0]);
+					_set_to_schedule(task_str);
 				}
 				
 
@@ -395,19 +404,19 @@ namespace Sched_controller {
 			}
 		}
 		
-		
+		PINF("job executed %s %d",task_str.c_str(),job_executed);
 		
 		if(!job_executed)
 		{
 			// this task has no new job in threads array although it would be time to
 			
 			// if this task already started ...
-			if(_tasks.at(task_str).arrival_time > 0)
-			{
+			//if(_tasks.at(task_str).arrival_time > 0)
+			//{
 				// ... determine why it's not in monitoring list
 				PINF("Optimizer (_query_monitor): Task %s has not executed a job.", task_str.c_str());
 				_task_not_executed(task_str);
-			}
+			//}
 			// else: the task did not start until now -> query again later...
 		}
 		
@@ -431,6 +440,8 @@ namespace Sched_controller {
 			_tasks.at(task_str).core = thread_core;
 		}
 		unsigned int core = _tasks.at(task_str).core;
+
+		_tasks.at(task_str).newest_job.exit_time=_threads[thread_nr].exit_time;
 		
 		PINF("Optimizer (_task_executed) exit_time %llu deadline %llu", _threads[thread_nr].exit_time,
 			_threads[thread_nr].arrival_time + _tasks.at(task_str).deadline);
@@ -629,6 +640,7 @@ namespace Sched_controller {
 			else
 			{
 				// add causation task to competitor list
+				PWRN("Add tasks to competitor list");
 				_tasks.at(task_str).competitor.emplace_back(cause_task_str);
 			}
 			
@@ -847,6 +859,7 @@ namespace Sched_controller {
 			_tasks.at(task_str).newest_job.foc_id = _threads[thread_nr].foc_id;
 			_tasks.at(task_str).newest_job.core = _threads[thread_nr].affinity.xpos();
 			_tasks.at(task_str).newest_job.arrival_time = _threads[thread_nr].arrival_time;
+			_tasks.at(task_str).newest_job.exit_time = _threads[thread_nr].exit_time;
 			_tasks.at(task_str).newest_job.dispatched = false;
 			PINF("Optimizer: Task %s has a new job with foc_id %d, (arrival: %llu, core: %u).", task_str.c_str(), _threads[thread_nr].foc_id, _tasks.at(task_str).newest_job.arrival_time, _tasks.at(task_str).newest_job.core);
 		}
@@ -878,17 +891,25 @@ namespace Sched_controller {
 		{
 			// find the task with max value and the task with max utilization
 			std::string max_value_str = std::string();
+			std::string min_value_str = std::string();
 			std::string max_util_str = std::string();
+			PINF("task %s has %d competitors",task_str.c_str() ,_tasks.at(task_str).competitor.size());
 			for(unsigned int i=0; i<_tasks.at(task_str).competitor.size(); ++i)
 			{
 				std::string comp_str = _tasks.at(task_str).competitor[i];
 				if (_tasks.at(comp_str).core == _tasks.at(task_str).core)
 				{
 					// find the task with max value
-					if(_tasks.at(comp_str).value[_tasks.at(comp_str).core] > _tasks.at(task_str).value[_tasks.at(task_str).core])
+					PINF("find value: %s %d %s %d", comp_str.c_str(), _tasks.at(comp_str).value[_tasks.at(comp_str).core], task_str.c_str(), _tasks.at(task_str).value[_tasks.at(task_str).core]);
+					if(_tasks.at(comp_str).value[_tasks.at(comp_str).core] >= _tasks.at(task_str).value[_tasks.at(task_str).core])
 					{
-						if((max_value_str.empty()) || (_tasks.at(comp_str).value[_tasks.at(comp_str).core] > _tasks.at(max_value_str).value[_tasks.at(max_value_str).core]))
+						if((max_value_str.empty()) || (_tasks.at(comp_str).value[_tasks.at(comp_str).core] >= _tasks.at(max_value_str).value[_tasks.at(max_value_str).core]))
 							max_value_str = comp_str;
+					}
+					if(_tasks.at(comp_str).value[_tasks.at(comp_str).core] < _tasks.at(task_str).value[_tasks.at(task_str).core])
+					{
+						if((min_value_str.empty()) || (_tasks.at(comp_str).value[_tasks.at(comp_str).core] < _tasks.at(min_value_str).value[_tasks.at(min_value_str).core]))
+							min_value_str = comp_str;
 					}
 					// find the task with max utilization
 					if(_tasks.at(comp_str).utilization > _tasks.at(task_str).utilization)
@@ -904,22 +925,17 @@ namespace Sched_controller {
 			{
 				case FAIRNESS:
 				{
-					PDBG("The optimization goal 'fairness' is used.");
+					//PDBG("The optimization goal 'fairness' is used.");
 					
-					if(max_value_str.empty()) // this task is the one with max value
+					if(!max_value_str.empty()) // this task is the one with max value
 					{
-						// allow this task to be scheduled and all competitors not
-						_tasks.at(task_str).to_schedule = true;
-						for (unsigned int i=0; i<_tasks.at(task_str).competitor.size(); ++i)
-						{
-							_tasks.at(_tasks.at(task_str).competitor[i]).to_schedule = false;
-						}
-					}
-					else // the task _tasks.at(max_val_str) is the one with max value
-					{
-						// don't allow this task to be scheduled, but the one with max value
-						_tasks.at(task_str).to_schedule = false;
+						//PDBG("max value %s", max_value_str.c_str());
 						_tasks.at(max_value_str).to_schedule = true;
+					}
+					if(!min_value_str.empty()) // this task is the one with max value
+					{
+						//PDBG("min value %s", min_value_str.c_str());
+						_tasks.at(min_value_str).to_schedule = false;
 					}
 					break;
 				}
@@ -1013,6 +1029,7 @@ namespace Sched_controller {
 		
 		
 		// variables for thread at _threads array
+		std::string cause_thread_str = std::string();
 		int cause_thread_nr = -1;
 		
 		// variables for thread at rip list
@@ -1020,7 +1037,7 @@ namespace Sched_controller {
 		long long unsigned latest_rip_time = 0;
 		
 		// loop through threads array to find a matching thread
-		for(unsigned int i=0; i<100; ++i)
+		for ( auto it = _tasks.begin(); it != _tasks.end(); ++it )
 		{
 			// end of threads-array reached
 			// if(_threads[i].foc_id == 0)
@@ -1030,14 +1047,16 @@ namespace Sched_controller {
 			
 			// find thread which exit-time is the most recent in the interval [thread_start, thread_deadline], so it is the causation thread
 			// matching task found -> check if exit_time is in considered time interval
-			PWRN("Optimizer(_get_cause_task): %llu %llu %llu",thread_start,thread_deadline,_threads[i].exit_time);
-			if((_threads[i].exit_time >= thread_start) && (_threads[i].exit_time <= thread_deadline))
+			//PWRN("Optimizer(_get_cause_task): start %llu deadline %llu exit of it %llu name of it %s",thread_start,thread_deadline,it->second.newest_job.exit_time,it->second.name.c_str());
+			if((it->second.newest_job.exit_time <= thread_deadline))//(it->second.newest_job.arrival_time <= thread_start) && 
 			{
-				PWRN("Optimizer(_get_cause_task yes): %llu %llu %llu",thread_start,thread_deadline,_threads[i].exit_time);
+				
 				// this is a possible causation task. I need the most recent one
-				if((cause_thread_nr < 0) || (_threads[i].exit_time > _threads[cause_thread_nr].exit_time))
+				if(((cause_thread_str.empty()) || (it->second.newest_job.exit_time > _tasks.at(cause_thread_str).newest_job.exit_time))&&task_str.compare(it->second.name))
 				{
-					cause_thread_nr = i;
+					cause_thread_str = it->second.name;
+					cause_thread_nr=42;
+					PWRN("Optimizer(_get_cause_task yes): %s %llu %llu %llu",it->second.name.c_str() ,thread_start,thread_deadline,it->second.newest_job.exit_time);
 				}
 			}
 		}
@@ -1073,12 +1092,12 @@ namespace Sched_controller {
 			return std::string();
 		}
 		//else: determine which thread was executed more recently
-		if ((latest_rip_time <= 0) ||  (_threads[cause_thread_nr].exit_time > latest_rip_time))
+		if ((latest_rip_time <= 0) ||  (_tasks.at(cause_thread_str).newest_job.exit_time > latest_rip_time))
 		{
 			// the causation thread is at _threads list
-			if(_tasks.count(_threads[cause_thread_nr].thread_name.string()) > 0)
+			if(!_tasks.at(cause_thread_str).name.empty())
 			{
-				return _threads[cause_thread_nr].thread_name.string();
+				return cause_thread_str;
 			}
 			// else: Thread doesn't match to a task at _tasks list
 			PWRN("Optimizer(_get_cause_task): Causation thread at _threads (%s) is not at _tasks list.", _threads[cause_thread_nr].thread_name.string());

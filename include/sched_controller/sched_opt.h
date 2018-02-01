@@ -44,6 +44,7 @@ namespace Sched_controller {
 	{
 		unsigned int		foc_id;
 		unsigned long long 	arrival_time;
+		unsigned long long 	exit_time;
 		unsigned int		core;
 		bool			dispatched;
 		
@@ -75,8 +76,8 @@ namespace Sched_controller {
 		
 		
 		// attributes for optimization
-		unsigned int*		value; // value is needed for every core
-		double			utilization;
+		unsigned int		value[4]; // value is needed for every core
+		double			utilization=100.0;
 		
 		
 	};	
@@ -84,6 +85,8 @@ namespace Sched_controller {
 	class Sched_opt {
 		
 		private:
+			bool verbose_debug=false;
+
 			Mon_manager::Connection*				_mon_manager;
 			Mon_manager::Monitoring_object*				_threads;
 			Genode::Dataspace_capability				_mon_ds_cap;

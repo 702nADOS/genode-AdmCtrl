@@ -32,6 +32,7 @@ namespace Sched_controller {
 	// public setter
 	void Sched_opt::set_goal(Genode::Ram_dataspace_capability xml_ds_cap)
 	{
+		if(verbose_debug) PINF("set goal");
 		// Definition of the optimization goal via xml file
 		Genode::Region_map* rm = Genode::env()->rm_session();
 		const char* xml = rm->attach(xml_ds_cap);
@@ -69,9 +70,9 @@ namespace Sched_controller {
 		
 		
 		// set query interval
-		std::vector<char> interval(32);
+		/*std::vector<char> interval(32);
 		root.sub_node("query_interval").value(interval.data(), interval.size());
-		query_intervall = std::stoi(interval.data());
+		query_intervall = std::stoi(interval.data());*/
 		
 		rm->detach(xml);
 		

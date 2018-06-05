@@ -9,7 +9,8 @@
 
 
 #include <ram_session/ram_session.h>
-#include <os/attached_ram_dataspace.h>
+//#include <os/attached_ram_dataspace.h>
+#include <base/attached_ram_dataspace.h>
 #include "sched_controller/rq_buffer.h"
 #include "rq_task/rq_task.h"
 
@@ -34,15 +35,17 @@ namespace Sched_controller {
 	// this struct is used to represent the tasks which are no Optimization_tasks any more (finished execution <-> killed)
 	struct Ended_task
 	{
-		std::string		name;
-		unsigned int		last_foc_id; // foc_id of last job
-		Cause_of_death		cause_of_death;
+		std::string		name {};
+		//unsigned int		last_foc_id {}; // foc_id of last job
+		int			last_foc_id {};
+		Cause_of_death		cause_of_death {};
 	};
 	
 	// this struct is used to determine the job corresponding to the thread at the rip list
 	struct Newest_job
 	{
-		unsigned int		foc_id;
+		//unsigned int		foc_id;
+		int			foc_id; 
 		unsigned long long 	arrival_time;
 		unsigned long long 	exit_time;
 		unsigned int		core;
@@ -53,26 +56,26 @@ namespace Sched_controller {
 	//class Related_tasks
 	struct Related_tasks
 	{
-		unsigned int		max_value;
-		std::unordered_set<std::string> tasks;
+		unsigned int		max_value {};
+		std::unordered_set<std::string> tasks {};
 	};
 	
 	struct Optimization_task
 	{
 		// static task attributes
-		std::string		name; // This is also used to identify the task
+		std::string		name {}; // This is also used to identify the task
 		
-		unsigned long long	inter_arrival;
-		unsigned long long	deadline;
+		unsigned long long	inter_arrival {};
+		unsigned long long	deadline {};
 		
 		// dynamic task attributes
-		unsigned int		core;
-		unsigned long long 	arrival_time; // this is the jobs earliest possible start time
-		bool			to_schedule;
-		bool			last_job_started; // used to indicate thelast execution of a job belonging to this task
-		std::vector<std::string> competitor;
-		unsigned int 		id_related;
-		Newest_job		newest_job;// used for rip list
+		unsigned int		core {};
+		unsigned long long 	arrival_time {}; // this is the jobs earliest possible start time
+		bool			to_schedule {};
+		bool			last_job_started {}; // used to indicate thelast execution of a job belonging to this task
+		std::vector<std::string> competitor {};
+		unsigned int 		id_related {};
+		Newest_job		newest_job {};// used for rip list
 		
 		
 		// attributes for optimization
@@ -85,26 +88,27 @@ namespace Sched_controller {
 	class Sched_opt {
 		
 		private:
+			Genode::Env &_env;
 			bool verbose_debug=false;
 
-			Mon_manager::Connection*				_mon_manager;
-			Mon_manager::Monitoring_object*				_threads;
-			Genode::Dataspace_capability				_mon_ds_cap;
+			Mon_manager::Connection*				_mon_manager {};
+			Mon_manager::Monitoring_object*				_threads {};
+			Genode::Dataspace_capability				_mon_ds_cap {};
 			
 			// Attributes needed for analyzing rip list correctly
-			long long unsigned*					rip;
-			Genode::Dataspace_capability				_dead_ds_cap;
+			long long unsigned*					rip {};
+			Genode::Dataspace_capability				_dead_ds_cap {};
 			
-			Optimization_goal					_opt_goal;
-			std::unordered_map<std::string, Optimization_task>	_tasks;
-			std::unordered_map<std::string, Ended_task>		_ended_tasks;
-			std::unordered_map<unsigned int, Related_tasks>		_related_tasks;
+			Optimization_goal					_opt_goal {};
+			std::unordered_map<std::string, Optimization_task>	_tasks {};
+			std::unordered_map<std::string, Ended_task>		_ended_tasks {};
+			std::unordered_map<unsigned int, Related_tasks>		_related_tasks{};
 			
-			int							num_cores;
-			bool*							overload_at_core;
+			int							num_cores {};
+			bool*							overload_at_core {};
 			
-			Timer::Connection					timer;
-			int							query_intervall;
+			Timer::Connection					timer {_env};
+			int							query_intervall {};
 			
 			
 			
@@ -135,7 +139,9 @@ namespace Sched_controller {
 			void last_job_started(std::string task_name);
 			
 			
-			Sched_opt(int sched_num_cores, Mon_manager::Connection *mon_manager, Mon_manager::Monitoring_object *sched_threads, Genode::Dataspace_capability mon_ds_cap, Genode::Dataspace_capability dead_ds_cap);
+			Sched_opt(Genode::Env &env,int sched_num_cores, Mon_manager::Connection *mon_manager, Mon_manager::Monitoring_object *sched_threads, Genode::Dataspace_capability mon_ds_cap, Genode::Dataspace_capability dead_ds_cap);
+			Sched_opt(const Sched_opt&);
+			Sched_opt& operator = (const Sched_opt&);
 			~Sched_opt();
 
 	};

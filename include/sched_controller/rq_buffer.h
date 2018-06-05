@@ -68,15 +68,15 @@ namespace Sched_controller
 	class Rq_buffer
 	{
 
-		private:
-
-			int _buf_size;                    /* size of the buffer */
+		private:	
+			Genode::Env &_env;
+			int _buf_size {};                    /* size of the buffer */
 			int *_lock = nullptr;             /* points to the lock for the Rq_buffer */
 			int *_head = nullptr;             /* points to the element that has been enqueued first */
 			int *_tail = nullptr;             /* points to the next free array index */
 			int *_window = nullptr;           /* number of unallocated objects between tail and head */
 			T *_buf = nullptr;                /* buffer of type T - it's an array */
-			Genode::Dataspace_capability _ds; /* dataspace capability of the shared object */
+			Genode::Dataspace_capability _ds {}; /* dataspace capability of the shared object */
 			char *_ds_begin = nullptr;        /* pointer to the beginning of the shared dataspace */
 
 //			void _init_rq_buf(int);  /* helper function for enabling different constructors, not used anymore */
@@ -96,7 +96,9 @@ namespace Sched_controller
 
 			Genode::Dataspace_capability get_ds_cap() { return _ds; }; /* return the dataspace capability */
 
-			Rq_buffer();
+			Rq_buffer(Genode::Env &); //edited by sudeep
+			Rq_buffer(const Rq_buffer&);
+			Rq_buffer& operator = (const Rq_buffer&);	
 
 	};
 
@@ -114,7 +116,8 @@ namespace Sched_controller
 	template <typename T>
 	void Rq_buffer<T>::init_w_shared_ds(Genode::Dataspace_capability __ds)
 	{
-		Genode::env()->rm_session()->detach(_ds_begin);
+		//Genode::env()->rm_session()->detach(_ds_begin);
+		_env.rm().detach(_ds_begin);
 		_ds=__ds;
 		/*
 		 * Set the size of the buffer and calculate the memory
@@ -133,7 +136,8 @@ namespace Sched_controller
 		 * are set to the respective pointers in memory.
 		 */
 		//_ds = Genode::env()->ram_session()->alloc(ds_size);
-		_ds_begin = Genode::env()->rm_session()->attach(_ds);
+		//_ds_begin = Genode::env()->rm_session()->attach(_ds);
+		_ds_begin = _env.rm().attach(_ds); //edited by sudeep
 		//PDBG("rq buffer address: %d\n",_ds_begin);
 
 		char *_lockp = _ds_begin + (0 * sizeof(int));
@@ -294,7 +298,7 @@ namespace Sched_controller
 	 *****************/
 
 	template <typename T>
-	Rq_buffer<T>::Rq_buffer()
+	Rq_buffer<T>::Rq_buffer(Genode::Env &env): _env(env)
 	{
 
 		//PINF("This class must be instantiated explicitly by calling the function 'init_w_shared_ds(int size)'.");

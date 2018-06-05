@@ -17,6 +17,7 @@ namespace Sched_controller
 	private:
 		unsigned long long _response_time_old;
 		unsigned long long _response_time;
+		//Genode::Env &_env;
 
 		/*
 		 * Computes the response time for check_task with the first num_elements from rq_buffer and the new_task
@@ -33,13 +34,13 @@ namespace Sched_controller
 		 * Executes the RTA
 		 * Important: The tasks have to be sorted by their priorities within the rq_buffer
 		 */
-		bool RTA(Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf);
+		bool RTA( Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf);
 		
 		/*
 		 * Does a sufficient schedulability analysis for fp
 		 * Important: The tasks have to be sorted by their priorities within the rq_buffer
 		 */
-		bool fp_sufficient_test(Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf);
+		bool fp_sufficient_test( Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf);
 	};
 }
 

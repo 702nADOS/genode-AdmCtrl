@@ -23,7 +23,7 @@ namespace Sched_controller {
 
 		void get_init_status()
 		{
-			PDBG("Calling Rpc-Interface function to get init status of sched_monitor.");
+			Genode::log("Calling Rpc-Interface function to get init status of sched_monitor.");
 			call<Rpc_get_init_status>();
 		}
 

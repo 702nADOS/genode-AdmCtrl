@@ -58,7 +58,7 @@ namespace Sched_controller
 
 
 
-	bool Sched_alg::RTA(Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf)
+	bool Sched_alg::RTA( Rq_task::Rq_task *new_task, Rq_buffer<Rq_task::Rq_task> *rq_buf)
 	{
 		Rq_task::Rq_task *_curr_task;
 		int num_elements = rq_buf->get_num_elements();

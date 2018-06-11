@@ -44,30 +44,31 @@ namespace Sched_controller
 
 		private:
 
-			Mon_manager::Connection _mon_manager;
-			Sync::Connection sync;
-			Timer::Connection _timer;
-			Genode::Dataspace_capability mon_ds_cap;
-			std::vector<Genode::Dataspace_capability> sync_ds_cap_vector;
-			Genode::Dataspace_capability sync_ds_cap;
-			Genode::Dataspace_capability rq_ds_cap;
-			Genode::Dataspace_capability dead_ds_cap;
-			int* rqs;
+			Genode::Env &_env;		  /* edited by sudeep */			
+			Mon_manager::Connection _mon_manager {};
+			Sync::Connection sync {};
+			Timer::Connection _timer {_env};
+			Genode::Dataspace_capability mon_ds_cap {};
+			std::vector<Genode::Dataspace_capability> sync_ds_cap_vector {};
+			Genode::Dataspace_capability sync_ds_cap {};
+			Genode::Dataspace_capability rq_ds_cap {};
+			Genode::Dataspace_capability dead_ds_cap {};
+			int* rqs = {};
 			int _num_rqs = 128;
 			int _num_pcores = 0;
 			int _num_cores = 0;
-			Pcore *_pcore;                                                    /* Array of pcores */
-			Runqueue *_runqueue;                                              /* Array of runqueues */
-			std::unordered_multimap<Pcore*, Runqueue*> _pcore_rq_association; /* which pcore hosts which rq */
-			Rq_buffer<Rq_task::Rq_task> *_rqs; /* array of ring buffers (Rq_buffer with fixed size) */
-			Genode::Signal_receiver rec;
-			Genode::Signal_context rec_context;
-			Genode::Trace::Execution_time idlelast0;
-			Genode::Trace::Execution_time idlelast1;
-			Genode::Trace::Execution_time idlelast2;
-			Genode::Trace::Execution_time idlelast3;
-			std::unordered_map<std::string, Rq_task::Rq_task> task_map;
-			Sched_opt *_optimizer;
+			Pcore *_pcore {};                                                    /* Array of pcores */
+			Runqueue *_runqueue {};                                              /* Array of runqueues */
+			std::unordered_multimap<Pcore*, Runqueue*> _pcore_rq_association {}; /* which pcore hosts which rq */
+			Rq_buffer<Rq_task::Rq_task> *_rqs {}; /* array of ring buffers (Rq_buffer with fixed size) */
+			Genode::Signal_receiver rec {};
+			Genode::Signal_context rec_context {};
+			Genode::Trace::Execution_time idlelast0 {};
+			Genode::Trace::Execution_time idlelast1 {};
+			Genode::Trace::Execution_time idlelast2 {};
+			Genode::Trace::Execution_time idlelast3 {};
+			std::unordered_map<std::string, Rq_task::Rq_task> task_map {};
+			Sched_opt *_optimizer {};
 			
 			
 			int _set_num_pcores();
@@ -79,7 +80,7 @@ namespace Sched_controller
 			void the_cycle();
 			
 
-			Sched_alg fp_alg;
+			Sched_alg fp_alg {};
 
 		public:
 
@@ -99,8 +100,10 @@ namespace Sched_controller
 			// functions for optimization control
 			Sched_opt* get_optimizer();
 			
-
-			Sched_controller();
+			
+			Sched_controller(Genode::Env &env); //edited by sudeep
+			Sched_controller(const Sched_controller&);
+			Sched_controller& operator = (const Sched_controller&);
 			~Sched_controller();
 
 	};

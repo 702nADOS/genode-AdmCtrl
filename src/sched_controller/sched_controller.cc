@@ -12,8 +12,8 @@
 /* ******************************** */
 
 #include <forward_list>
-#include <unordered_map>
 #include <base/printf.h>
+#include <unordered_map>
 
 /* for optimize function */
 #include <util/xml_node.h>
@@ -43,13 +43,17 @@ namespace Sched_controller {
 	int Sched_controller::_init_rqs(int rq_size)
 	{
 
-		_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
-
+		//_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
+		_rqs =(Rq_buffer<Rq_task::Rq_task>*)malloc(sizeof(Rq_buffer<Rq_task::Rq_task>)*_num_cores);
+		for (int i=0 ; i<_num_cores ; ++i){
+    			//_rqs[i] = new Rq_buffer<Rq_task::Rq_task>{_env};
+    			new(_rqs+i) Rq_buffer<Rq_task::Rq_task>{_env};
+    		}
 		for (int i = 0; i < _num_cores; i++) {
 			//_rqs[i].init_w_shared_ds(rq_size);
 		}
 		Genode::printf("New Rq_buffer created. Starting address is: %p.\n", _rqs);
-
+		Genode::log("rq size is:%d\n", rq_size);
 		return 0;
 
 	}
@@ -91,7 +95,8 @@ namespace Sched_controller {
 			}
 			else
 			{
-				PWRN("Sched_controller (enq): The task_class of task %s is neither hi nor lo. It is: %d", task.name, task.task_class);
+				PWRN("Sched_controller (enq): The task_class of task %s", task.name);
+				Genode::log("is neither hi nor lo. It is: ", (int)task.task_class);	
 			}
 			int success = _rqs[core].enq(task);
 			
@@ -128,19 +133,29 @@ namespace Sched_controller {
 	void Sched_controller::init_ds(int num_rqs, int num_cores)
 	{
 		int ds_size = num_cores*(4 * sizeof(int)) + (num_rqs * sizeof(Rq_task::Rq_task));
-		_rqs = new Rq_buffer<Rq_task::Rq_task>[num_cores];
+		//_rqs =  new Rq_buffer<Rq_task::Rq_task>[num_cores];
+		_rqs =(Rq_buffer<Rq_task::Rq_task>*)malloc(sizeof(Rq_buffer<Rq_task::Rq_task>)*num_cores);
+		for (int i=0 ; i<num_cores ; ++i){
+    			//_rqs[i] = new Rq_buffer<Rq_task::Rq_task>{_env};
+    			new(_rqs+i) Rq_buffer<Rq_task::Rq_task>{_env};
+    		}
 		for (int i = 0; i < num_cores; i++) {
-			sync_ds_cap_vector.emplace_back(Genode::env()->ram_session()->alloc(ds_size));
+			sync_ds_cap_vector.emplace_back(_env.ram().alloc(ds_size));
 			_rqs[i].init_w_shared_ds(sync_ds_cap_vector.back());
 		}
 	}
 
 	void Sched_controller::set_sync_ds(Genode::Dataspace_capability ds_cap)
 	{
-		PDBG("Got ds cap\n");
+		Genode::log("Got ds cap\n");
 		_num_cores=1;
 		sync_ds_cap=ds_cap;
-		_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
+		//_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
+		_rqs =(Rq_buffer<Rq_task::Rq_task>*)malloc(sizeof(Rq_buffer<Rq_task::Rq_task>)*_num_cores);
+		for (int i=0 ; i<_num_cores ; ++i){
+    			//_rqs[i] = new Rq_buffer<Rq_task::Rq_task>{_env};
+    			new(_rqs+i) Rq_buffer<Rq_task::Rq_task>{_env};
+    		}
 		for (int i = 0; i < _num_cores; i++) {
 			//_rqs[i].init_w_shared_ds(sync_ds_cap);
 		}
@@ -166,7 +181,7 @@ namespace Sched_controller {
 	{
 		_num_pcores = _mon_manager.get_num_cores();
 		_num_cores=_num_pcores;
-		PDBG("Num cores=%d\n", _num_cores);
+		Genode::log("Num cores=%d\n", _num_cores);
 		return 0;
 	}
 
@@ -235,10 +250,11 @@ namespace Sched_controller {
 
 	}
 
-	void Sched_controller::task_to_rq(int rq, Rq_task::Rq_task *task) {
+	void Sched_controller::task_to_rq(int rq, Rq_task::Rq_task *) {
 		//PINF("Number of RQs: %d", _rq_manager.get_num_rqs());
-		int status = enq(rq, *task);
+		//int status = enq(rq, *task);
 		//PDBG("%d", status);
+		Genode::log("%d", rq);
 		return;
 	}
 
@@ -330,7 +346,7 @@ namespace Sched_controller {
 		idlelast1=_mon_manager.get_idle_time(1);
 		idlelast2=_mon_manager.get_idle_time(2);
 		idlelast3=_mon_manager.get_idle_time(3);
-		Timer::Connection timer;
+		Timer::Connection timer{_env};
 		timer.msleep(100);
 		switch(core){
 			case 0:{double util0=1-(_mon_manager.get_idle_time(0).value-idlelast0.value)/100000;
@@ -365,7 +381,7 @@ namespace Sched_controller {
 			 * be found in the _pcore_rq_association unordered_multimap
 			 */
 			if (_pcore_rq_association.find(*it) == _pcore_rq_association.end()) {
-				PDBG("Pcore has no RQ, it claims...");
+				Genode::log("Pcore has no RQ, it claims...");
 				unused_pcores.push_front(*it);
 			}
 		}
@@ -377,7 +393,7 @@ namespace Sched_controller {
 	 ** Constructors **
 	 ******************/
 
-	Sched_controller::Sched_controller()
+	Sched_controller::Sched_controller(Genode::Env &env):_env(env)
 	{
 		/* We then need to figure out how many CPU cores are available at the system */
 		_set_num_pcores();
@@ -388,19 +404,23 @@ namespace Sched_controller {
 		/* Now lets create the runqueues we're working with */
 		_init_runqueues();
 
-		_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
+		//_rqs = new Rq_buffer<Rq_task::Rq_task>[_num_cores];
+		_rqs =(Rq_buffer<Rq_task::Rq_task>*)malloc(sizeof(Rq_buffer<Rq_task::Rq_task>)*_num_cores);
+		for (int i=0 ; i<_num_cores ; ++i){
+    			//_rqs[i] = new Rq_buffer<Rq_task::Rq_task>{_env};
+    			new(_rqs+i) Rq_buffer<Rq_task::Rq_task>{_env};
+    		}
+		mon_ds_cap = _env.ram().alloc(100*sizeof(Mon_manager::Monitoring_object));
+		Mon_manager::Monitoring_object *threads = _env.rm().attach(mon_ds_cap);
 
-		mon_ds_cap = Genode::env()->ram_session()->alloc(100*sizeof(Mon_manager::Monitoring_object));
-		Mon_manager::Monitoring_object *threads = Genode::env()->rm_session()->attach(mon_ds_cap);
+		rq_ds_cap = _env.ram().alloc(101*sizeof(int));
+		rqs = _env.rm().attach(rq_ds_cap);
 
-		rq_ds_cap = Genode::env()->ram_session()->alloc(101*sizeof(int));
-		rqs=Genode::env()->rm_session()->attach(rq_ds_cap);
-
-		sync_ds_cap = Genode::env()->ram_session()->alloc(100*sizeof(int));
+		sync_ds_cap = _env.ram().alloc(100*sizeof(int));
 		_rqs[0].init_w_shared_ds(sync_ds_cap);
 		
-		dead_ds_cap = Genode::env()->ram_session()->alloc(256*sizeof(long long unsigned));
-
+		dead_ds_cap = _env.ram().alloc(256*sizeof(long long unsigned));
+	
 
 
 		rqs[1]=1;
@@ -430,7 +450,7 @@ namespace Sched_controller {
 			//PINF("Allocated rq_buffer %d to _pcore %d", i, i);
 		}
 
-		_optimizer = new Sched_opt(_num_cores, &_mon_manager, threads, mon_ds_cap, dead_ds_cap);
+		_optimizer = new Sched_opt(_env, _num_cores, &_mon_manager, threads, mon_ds_cap, dead_ds_cap);
 				
 		//loop forever
 		//the_cycle();
@@ -445,7 +465,7 @@ namespace Sched_controller {
 	{
 		PINF("Update Rq_buffer for core %d!", core);
 		_rqs[core].init_w_shared_ds(sync_ds_cap_vector.at(core));
-		Mon_manager::Monitoring_object *threads = Genode::env()->rm_session()->attach(mon_ds_cap);
+		Mon_manager::Monitoring_object *threads = _env.rm().attach(mon_ds_cap);
 		rqs[1]=1;
 		rqs[2]=1;
 		_mon_manager.update_rqs(rq_ds_cap);
@@ -493,17 +513,17 @@ namespace Sched_controller {
 			task.task_class = Rq_task::Task_class::lo;
 			task.task_strategy = Rq_task::Task_strategy::priority;
 			task.prio = rqs[2*i];
-			//PDBG("enqueue task\n");
+			//PDBG("enqueue task\n"); Genode::log
 			//allocate_task(task);
 			_rqs->enq(task);
 		}
 		//guess number of tasks in rq smaller than 50
-		Genode::Ram_dataspace_capability _ds=Genode::env()->ram_session()->alloc(100*sizeof(int));
-		int *list=Genode::env()->rm_session()->attach(_ds);;
+		Genode::Ram_dataspace_capability _ds= _env.ram().alloc(100*sizeof(int));
+		int *list= _env.rm().attach(_ds);;
 		//count number of tasks dequeued from rq buffer
 		int counter=1;
 		//object pointer to temporarily store dequeued task
-		Rq_task::Rq_task *dequeued_task;
+		Rq_task::Rq_task *dequeued_task {};
 		while(1)
 		{
 			//stop dequeueing, if there are no more tasks in the buffer
@@ -518,7 +538,7 @@ namespace Sched_controller {
 		list[0]=counter-1;
 		list[1]=1;
 		sync.deploy(_ds, 0, 0);
-		Genode::env()->ram_session()->free(_ds);
+		_env.ram().free(_ds);
 		the_cycle();
 	}
 

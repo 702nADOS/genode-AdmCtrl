@@ -34,8 +34,9 @@ namespace Sched_controller {
 	{
 		if(verbose_debug) PINF("set goal");
 		// Definition of the optimization goal via xml file
-		Genode::Region_map* rm = Genode::env()->rm_session();
-		const char* xml = rm->attach(xml_ds_cap);
+		//Genode::Region_map rm = _env.rm();
+		//const char* xml = rm.attach(xml_ds_cap);
+		const char* xml = _env.rm().attach(xml_ds_cap);
 		Genode::Xml_node root(xml);
 
 		const auto fn = [this] (const Genode::Xml_node& node)
@@ -74,7 +75,7 @@ namespace Sched_controller {
 		root.sub_node("query_interval").value(interval.data(), interval.size());
 		query_intervall = std::stoi(interval.data());*/
 		
-		rm->detach(xml);
+		_env.rm().detach(xml);
 		
 		if(verbose_debug) PINF("Optimizer (set_goal): New optimization goal is %s, with query_interval %d", (_opt_goal==FAIRNESS)? "fairness": (_opt_goal==UTILIZATION)? "utilization": "none", query_intervall);
 	}
@@ -144,20 +145,20 @@ namespace Sched_controller {
 		{
 			return;
 		}
-		bool monitor_queried = false;
+		//bool monitor_queried = false;
 		unsigned long current_time = 0;
 		unsigned long long real_deadline = it->second.arrival_time + it->second.deadline;
-		current_time = timer.now_us();
+		current_time = timer.elapsed_us();
 		int count = 0;
-		if(verbose_debug) PDBG("Optimizer: - %d, act_time = %lu", count, current_time);
-		if(verbose_debug) PDBG("Optimizer: - %d, deadline = %llu, arrival: %llu, deadl: %llu", count, real_deadline, it->second.arrival_time, it->second.deadline);	
+		if(verbose_debug) Genode::log("Optimizer: - %d, act_time = %lu", count, current_time);
+		if(verbose_debug) Genode::log("Optimizer: - %d, deadline = %llu, arrival: %llu, deadl: %llu", count, real_deadline, it->second.arrival_time, it->second.deadline);	
 			// if it's time to see what happend, ...
 			if (current_time >= real_deadline || (it->second.arrival_time == 0))
 			{
 				//... query monitor-info about current task (was there any deadline miss?)
 				//if(verbose_debug) PDBG("Optimizer (start_optimizing):  Do optimization due to task %s at iteration %d", task_name.c_str(), count);
 				_query_monitor(it->first, current_time);
-				monitor_queried = true;
+				//monitor_queried = true;
 			}
 			
 			
@@ -203,7 +204,7 @@ namespace Sched_controller {
 		return -1;
 	}
 	
-	Sched_opt::Sched_opt(int sched_num_cores, Mon_manager::Connection *mon_manager, Mon_manager::Monitoring_object *sched_threads, Genode::Dataspace_capability mon_ds_cap, Genode::Dataspace_capability dead_ds_cap)
+	Sched_opt::Sched_opt(Genode::Env &env, int sched_num_cores, Mon_manager::Connection *mon_manager, Mon_manager::Monitoring_object *sched_threads, Genode::Dataspace_capability mon_ds_cap, Genode::Dataspace_capability dead_ds_cap):_env(env)
 	{
 		
 		// set variables for querying monitor data
@@ -213,7 +214,7 @@ namespace Sched_controller {
 		
 		// set variables for querying rip list
 		_dead_ds_cap = dead_ds_cap;
-		rip = Genode::env()->rm_session()->attach(_dead_ds_cap);
+		rip = _env.rm().attach(_dead_ds_cap);
 		
 		// set the number of cores to handle multicore optimization
 		num_cores = sched_num_cores;
@@ -254,8 +255,8 @@ namespace Sched_controller {
 		 * 
 		*/
 		
-		std::vector<unsigned int> new_threads_nr;
-		
+		//std::vector<unsigned int> new_threads_nr;
+		std::vector<int> new_threads_nr;
 		// fill _threads with data
 		_mon_manager->update_info(_mon_ds_cap);
 		
@@ -352,9 +353,10 @@ namespace Sched_controller {
 			default:
 			{
 				// at least two threads are in new_threads_nr
-				unsigned int most_recent_thread = -1;
-				unsigned int second_recent_thread = -1;
-				
+				//unsigned int most_recent_thread = -1;
+				int most_recent_thread = -1;
+				//unsigned int second_recent_thread = -1;
+				int second_recent_thread = -1;
 				// find the two threads, which are most recent
 				for(unsigned int i=0; i<new_threads_nr.size(); ++i)
 				{
@@ -381,7 +383,7 @@ namespace Sched_controller {
 				for(unsigned int i=0; i<new_threads_nr.size(); ++i)
 				{
 					// change value and update to_schedule
-					if((i == most_recent_thread) && !recent_deadline_time_reached)
+					if((int(i) == most_recent_thread) && !recent_deadline_time_reached)
 					{
 						// the most recent thread has still some time left to finish its execution
 						//-> don't change values or update to_schedule but set this thread as newest job
@@ -392,14 +394,15 @@ namespace Sched_controller {
 					}
 					
 					// only set to_schedule if thread[i] is the thread which most recently reached its deadline time
-					bool consider_this_thread =( ((i == most_recent_thread) && recent_deadline_time_reached) || ((i == second_recent_thread) && !recent_deadline_time_reached) );
+					bool consider_this_thread =( ((int(i) == most_recent_thread) && recent_deadline_time_reached) || ((int(i) == second_recent_thread) && !recent_deadline_time_reached) );
 					
-					if (consider_this_thread)
+					if (consider_this_thread){
 						if(verbose_debug) PINF("Optimizer (_query_monitor): Task %s - job %u is newest ended job.", task_str.c_str(), _threads[i].foc_id);
-					else
-						if(verbose_debug) PINF("Optimizer (_query_monitor): Task %s - job %u is older job.", task_str.c_str(), _threads[i].foc_id);
+						else
+							if(verbose_debug) PINF("Optimizer (_query_monitor): Task %s - job %u is older job.", task_str.c_str(), _threads[i].foc_id);
 					
-					_task_executed(task_str, i, consider_this_thread);
+						_task_executed(task_str, i, consider_this_thread);
+					}	
 				}
 				
 				// set arrival_time for next iteration
@@ -545,7 +548,7 @@ namespace Sched_controller {
 					for (unsigned int i=1; i<rip[0]*2+1; i+=2)
 					{
 						// foc_id is rip[i], time is rip[i+1]/1000
-						if(_tasks.at(task_str).newest_job.foc_id == rip[i])
+						if(_tasks.at(task_str).newest_job.foc_id == int(rip[i]))
 						{
 							// the task was found in rip list
 							task_in_rip = true;
@@ -764,11 +767,11 @@ namespace Sched_controller {
 		
 		// increase value and check max_value
 		_tasks.at(task_str).value[_tasks.at(task_str).core] ++;
-		if(_tasks.at(task_str).id_related <= 0)
+		if(_tasks.at(task_str).id_related <= 0){
 			if(verbose_debug) PWRN("Optimizer: The task %s has no id_related althought it should have been updated priorly.", task_str.c_str());
 		else
 			_reset_values(task_str);
-		
+		}
 		// update scheduling permissions
 		_set_to_schedule(task_str);
 	}
@@ -895,7 +898,7 @@ namespace Sched_controller {
 			std::string min_value_str = std::string();
 			std::string max_util_str = std::string();
 			std::string min_util_str = std::string();
-			if(verbose_debug) PINF("task %s has %d competitors",task_str.c_str() ,_tasks.at(task_str).competitor.size());
+			if(verbose_debug) PINF("task %s has %ld competitors",task_str.c_str() ,_tasks.at(task_str).competitor.size()); //PINF
 			for(unsigned int i=0; i<_tasks.at(task_str).competitor.size(); ++i)
 			{
 				std::string comp_str = _tasks.at(task_str).competitor[i];
@@ -949,22 +952,22 @@ namespace Sched_controller {
 				}
 				case UTILIZATION:
 				{
-					if(verbose_debug) PDBG("The optimization goal 'utilization' is used.");
+					if(verbose_debug) Genode::log("The optimization goal 'utilization' is used.");
 					
 					if(!max_util_str.empty()) // this task is the one with max utilization
 					{
-						if(verbose_debug) PDBG("max value %s", max_util_str.c_str());
+						if(verbose_debug) Genode::log("max value %s", max_util_str.c_str());
 						_tasks.at(max_util_str).to_schedule = true;
 					}
 					if(!min_util_str.empty()) // this task is the one with max value
 					{
-						if(verbose_debug) PDBG("min value %s", min_util_str.c_str());
+						if(verbose_debug) Genode::log("min value %s", min_util_str.c_str());
 						_tasks.at(min_util_str).to_schedule = false;
 					}
 					break;
 				}
 				default:
-					if(verbose_debug) PDBG("No optimization goal is set, hence the task scheduling is not influenced.");
+					if(verbose_debug) Genode::log("No optimization goal is set, hence the task scheduling is not influenced.");
 				
 			}
 		}
@@ -1112,13 +1115,13 @@ namespace Sched_controller {
 			// causation thread had deadline miss
 			for (auto& task: _tasks)
 			{
-				if(task.second.newest_job.foc_id == job_foc_id)
+				if(task.second.newest_job.foc_id == int(job_foc_id))
 					return task.first;
 			}
 			// causation thread was killed
 			for(auto& task: _ended_tasks)
 			{
-				if(task.second.last_foc_id == job_foc_id)
+				if(task.second.last_foc_id == int(job_foc_id))
 				{
 					if(verbose_debug) PWRN("Optimizer(_get_cause_task): The task, which job was executed shortly before the job of task %s is already dead/finished.", task_str.c_str());
 				}

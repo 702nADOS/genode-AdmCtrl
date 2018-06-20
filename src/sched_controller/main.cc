@@ -13,7 +13,7 @@
 //#include <cap_session/connection.h>
 #include <base/component.h>
 #include <root/component.h>
-
+#include <libc/component.h>
 /* local includes */
 #include <sched_controller_session/sched_controller_session.h>
 #include <sched_controller/sched_controller.h>
@@ -124,7 +124,7 @@ namespace Sched_controller {
 
 struct Main
 {
-	Genode::Env &_env;
+	Libc::Env &_env;
 	Genode::Entrypoint &_ep;
 
 	Sched_controller::Sched_controller ctr {_env};
@@ -142,7 +142,7 @@ struct Main
 	//_env.parent().announce(ep.manage(&sched_controller_root));
 	
 	Sched_controller::Root_component _sched_controller_root{_env, _ep, sliced_heap, &ctr};
-	Main(Genode::Env &env) : _env(env), _ep(_env.ep())
+	Main(Libc::Env &env) : _env(env), _ep(_env.ep())
 	{
 		ctr.init_ds(32,2);	
 		_env.parent().announce(_ep.manage(_sched_controller_root));		
@@ -150,5 +150,8 @@ struct Main
 
 };
 
-void Component::construct(Genode::Env &env) { static Main main(env); }
-	
+//void Component::construct(Genode::Env &env) { static Main main(env); }
+void Libc::Component::construct(Libc::Env &env)
+{
+	Libc::with_libc([&] () { static Main main(env); });
+}	

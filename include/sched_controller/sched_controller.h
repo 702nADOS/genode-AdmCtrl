@@ -45,7 +45,7 @@ namespace Sched_controller
 		private:
 
 			Genode::Env &_env;		  /* edited by sudeep */			
-			Mon_manager::Connection _mon_manager {};
+			Mon_manager::Connection _mon_manager {_env};
 			Sync::Connection sync {};
 			Timer::Connection _timer {_env};
 			Genode::Dataspace_capability mon_ds_cap {};

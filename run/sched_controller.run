@@ -29,23 +29,23 @@ install_config {
     <default-route>
         <any-service> <parent/> <any-child/> </any-service>
     </default-route>
-    <start name="timer" priority="0">
+    <start name="timer" priority="0" caps="50">
         <resource name="RAM" quantum="1M"/>
         <provides><service name="Timer"/></provides>
     </start>
-    <start name="sched_controller" priority="0">
+    <start name="sched_controller" priority="0" caps="100">
         <resource name="RAM" quantum="40M"/>
         <provides><service name="Sched_controller"/></provides>
     </start>
-    <start name="mon_manager" priority="0">
+    <start name="mon_manager" priority="0" caps="75">
         <resource name="RAM" quantum="40M"/>
         <provides><service name="mon_manager"/></provides>
     </start>
-    <start name="utilization" priority="0">
+    <start name="utilization" priority="0" caps="75">
         <resource name="RAM" quantum="20M"/>
         <provides><service name="utilization"/></provides>
     </start>
-    <start name="sync" priority="0">
+    <start name="sync" priority="0" caps="75">
 	<resource name="RAM" quantum="40M"/>
 	<provides><service name="sync"/></provides>
     </start>

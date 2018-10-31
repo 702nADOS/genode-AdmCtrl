@@ -181,7 +181,7 @@ namespace Sched_controller {
 	{
 		_num_pcores = _mon_manager.get_num_cores();
 		_num_cores=_num_pcores;
-		Genode::log("Num cores=%d\n", _num_cores);
+		Genode::log("Num cores=", _num_cores);
 		return 0;
 	}
 
